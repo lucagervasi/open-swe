@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { v4 as uuidv4 } from "uuid";
 import {
   GITHUB_TOKEN_COOKIE,
@@ -70,6 +71,13 @@ async function createNewSession(
   const newThreadId = uuidv4();
   const hasNext = inputs.threadState.next.length > 0;
 
+  console.log("\n\nCONFIG");
+  console.dir(getCustomConfigurableFields(inputs.threadConfig), {
+    depth: null,
+  });
+  console.log("\n\nCONFIGURABLE");
+  console.dir(inputs.threadConfig.configurable, { depth: null });
+
   const run = await client.runs.create(newThreadId, inputs.graphId, {
     command: {
       update: inputs.threadState.values,
@@ -97,7 +105,8 @@ async function createNewSession(
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body: RestartRunRequest = await request.json();
+    const reqCopy = request.clone();
+    const body: RestartRunRequest = await reqCopy.json();
     const { managerThreadId, plannerThreadId, programmerThreadId } = body;
 
     const langGraphClient = new Client({
@@ -129,6 +138,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         {
           error:
             "Failed to restart run. Must have existing planner and manager threads.",
+        },
+        { status: 500 },
+      );
+    }
+
+    if (!("config" in managerThread)) {
+      console.error("Manager thread must have a config.");
+      console.dir(managerThread, { depth: null });
+      return NextResponse.json(
+        {
+          error: "Failed to restart run. Manager thread must have a config.",
+        },
+        { status: 500 },
+      );
+    }
+    if (!("config" in plannerThread)) {
+      console.error("Planner thread must have a config.");
+      console.dir(plannerThread, { depth: null });
+      return NextResponse.json(
+        {
+          error: "Failed to restart run. Planner thread must have a config.",
+        },
+        { status: 500 },
+      );
+    }
+    if (programmerThread && !("config" in programmerThread)) {
+      console.error("Programmer thread must have a config.");
+      console.dir(programmerThread, { depth: null });
+      return NextResponse.json(
+        {
+          error: "Failed to restart run. Programmer thread must have a config.",
         },
         { status: 500 },
       );
