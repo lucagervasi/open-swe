@@ -2,6 +2,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import * as ls from "langsmith/vitest";
+import { Client, Example } from "langsmith";
 import { formatInputs } from "./prompts.js";
 import { createLogger, LogLevel } from "../src/utils/logger.js";
 import { evaluator } from "./evaluator.js";
@@ -12,40 +13,37 @@ import { ManagerGraphState } from "@openswe/shared/open-swe/manager/types";
 import { PlannerGraphState } from "@openswe/shared/open-swe/planner/types";
 import { GraphState } from "@openswe/shared/open-swe/types";
 import { withRetry } from "./utils/retry.js";
-import { DATASET } from "./utils/dataset.js";
+import { OpenSWEInput } from "./open-swe-types.js";
+import { createProgrammerRunURL } from "./utils/langsmith-url.js";
+//import { DATASET } from "./utils/dataset.js";
 
 const logger = createLogger(LogLevel.DEBUG, "Evaluator");
 
 // Configuration constants
 const RUN_AGENT_PIPELINE = process.env.RUN_AGENT_PIPELINE === "true" || true;
-let programmerRunUrl =
-  "https://smith.langchain.com/o/ebbaf2eb-769b-4505-aca2-d11de10372a4/projects/p/eba94921-7f40-4be0-b153-e88ab6fdcfdd/r/";
 const DATASET_NAME =
   process.env.DATASET_NAME || "aliyan-open-swe-langgraph-eval";
-// const RUN_NAME = `${DATASET_NAME}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
 
-// async function loadDataset(): Promise<Example[]> {
-//   const client = new LangSmithClient();
-//   const datasetStream = client.listExamples({ datasetName: DATASET_NAME });
-//   let examples: Example[] = [];
-//   for await (const example of datasetStream) {
-//     examples.push(example);
-//   }
-//   logger.info(
-//     `Loaded ${examples.length} examples from dataset "${DATASET_NAME}"`,
-//   );
-//   return examples;
-// }
+async function loadDataset(): Promise<Example[]> {
+  const client = new Client();
+  const datasetStream = client.listExamples({ datasetName: DATASET_NAME });
+  const examples: Example[] = [];
+  for await (const example of datasetStream) {
+    examples.push(example);
+  }
+  logger.info(
+    `Loaded ${examples.length} examples from dataset "${DATASET_NAME}"`,
+  );
+  return examples;
+}
 
-// const DATASET = await loadDataset().then((examples) =>
-//   examples.map(example => ({
-//     inputs: example.inputs as OpenSWEInput,
-//   })),
-// );
+const DATASET = await loadDataset().then((examples) =>
+  examples.slice(0, 1).map((example) => ({
+    inputs: example.inputs as OpenSWEInput,
+  })),
+);
 
 logger.info(`Starting evals over ${DATASET.length} examples...`);
-
-//const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://localhost:2024";
 
 ls.describe(DATASET_NAME, () => {
   ls.test.each(DATASET)(
@@ -81,6 +79,7 @@ ls.describe(DATASET_NAME, () => {
       });
 
       let branchName: string;
+      let programmerRunUrl: string | undefined;
 
       if (RUN_AGENT_PIPELINE) {
         logger.info("Running full agent pipeline...");
@@ -214,7 +213,7 @@ ls.describe(DATASET_NAME, () => {
         }
 
         let programmerRun;
-        programmerRunUrl = `${programmerRunUrl}${programmerSession.runId}`;
+        programmerRunUrl = createProgrammerRunURL(programmerSession.runId);
         try {
           programmerRun = await withRetry(() =>
             lgClient.runs.join(
