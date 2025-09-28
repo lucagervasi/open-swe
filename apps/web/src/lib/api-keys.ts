@@ -16,6 +16,8 @@ export function hasApiKeySet(config: Record<string, any>) {
   if (
     (enabledProviders.includes("anthropic") && !apiKeys.anthropicApiKey) ||
     (enabledProviders.includes("openai") && !apiKeys.openaiApiKey) ||
+    (enabledProviders.includes("custom-openai") &&
+      !apiKeys.customOpenaiApiKey) ||
     (enabledProviders.includes("google-genai") && !apiKeys.googleApiKey)
   ) {
     return false;

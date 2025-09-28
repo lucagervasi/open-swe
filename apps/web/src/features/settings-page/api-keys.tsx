@@ -42,6 +42,7 @@ const API_KEY_DEFINITIONS = {
   llms: [
     { id: "anthropicApiKey", name: "Anthropic" },
     { id: "openaiApiKey", name: "OpenAI" },
+    { id: "customOpenaiApiKey", name: "Custom OpenAI" },
     { id: "googleApiKey", name: "Google Gen AI" },
   ],
   // infrastructure: [
