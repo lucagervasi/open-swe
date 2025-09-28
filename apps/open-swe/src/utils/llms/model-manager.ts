@@ -45,6 +45,7 @@ export enum CircuitState {
 
 export const PROVIDER_FALLBACK_ORDER = [
   "openai",
+  "custom-openai",
   "anthropic",
   "google-genai",
 ] as const;
@@ -78,6 +79,8 @@ const providerToApiKey = (
   switch (providerName) {
     case "openai":
       return apiKeys.openaiApiKey;
+    case "custom-openai":
+      return apiKeys.customOpenaiApiKey;
     case "anthropic":
       return apiKeys.anthropicApiKey;
     case "google-genai":
@@ -197,6 +200,15 @@ export class ModelManager {
               temperature: thinkingModel ? undefined : temperature,
             }),
     };
+
+    if (provider === "custom-openai") {
+      modelOptions.modelProvider = "openai";
+      if (process.env.CUSTOM_OPENAI_ENDPOINT) {
+        modelOptions.configuration = {
+          baseURL: process.env.CUSTOM_OPENAI_ENDPOINT,
+        };
+      }
+    }
 
     logger.debug("Initializing model", {
       provider,
@@ -377,6 +389,10 @@ export class ModelManager {
     provider: Provider,
     task: LLMTask,
   ): ModelLoadConfig | null {
+    const customOpenAIModels =
+      process.env.CUSTOM_OPENAI_MODELS?.split(",") || [];
+    const defaultCustomModel = customOpenAIModels[0] || "custom-model";
+
     const defaultModels: Record<Provider, Record<LLMTask, string>> = {
       anthropic: {
         [LLMTask.PLANNER]: "claude-sonnet-4-0",
@@ -398,6 +414,13 @@ export class ModelManager {
         [LLMTask.REVIEWER]: "gpt-5",
         [LLMTask.ROUTER]: "gpt-5-nano",
         [LLMTask.SUMMARIZER]: "gpt-5-mini",
+      },
+      "custom-openai": {
+        [LLMTask.PLANNER]: defaultCustomModel,
+        [LLMTask.PROGRAMMER]: defaultCustomModel,
+        [LLMTask.REVIEWER]: defaultCustomModel,
+        [LLMTask.ROUTER]: defaultCustomModel,
+        [LLMTask.SUMMARIZER]: defaultCustomModel,
       },
     };
 

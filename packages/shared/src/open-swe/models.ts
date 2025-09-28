@@ -77,6 +77,10 @@ export const MODEL_OPTIONS = [
     value: "openai:gpt-4.1-mini",
   },
   {
+    label: "Custom OpenAI",
+    value: "custom-openai:custom-model",
+  },
+  {
     label: "Gemini 2.5 Pro",
     value: "google-genai:gemini-2.5-pro",
   },
